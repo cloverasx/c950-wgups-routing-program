@@ -15,7 +15,7 @@ from ui.command_line_interface import CommandLineInterface
 from utils.distance_calculator import DistanceCalculator
 from utils.time_utils import TimeUtils
 
-
+# TODO: Test function after parsing function works
 def load_package_data(file_path):
     # open the file in read mode
     with open(file_path, 'r') as file:
@@ -43,6 +43,7 @@ def load_package_data(file_path):
         # return the list of packages
         return packages
 
+# TODO: Test function after parsing function works
 def load_distance_table(file_path):
     # open the file in read mode
     with open(file_path, 'r') as file:
@@ -67,3 +68,45 @@ def load_distance_table(file_path):
                 distances[address1] = {address2: distance}
         # return the dictionary of distances
         return distances
+
+# TODO: This doesn't provide the output I want yet; iterate and determine what 
+#       will fit the model best.
+# parse xlsx into properly formatted csv
+import pandas as pd
+def parse_xlsx(file_path, first_header):
+    """
+    Parses an XLSX file and converts it into a properly formatted CSV file.
+    
+    Args:
+        file_path (str): The path to the XLSX file to be parsed.
+        first_header (str): The first header to identify the start of relevant data.
+    
+    Returns:
+        str: Path to the generated CSV file.
+    """
+    # Read the XLSX file using pandas, without headers
+    xlsx_data = pd.read_excel(file_path, sheet_name=0, header=None)
+    
+    # Find the index of the first header
+    header_index = None
+    for idx, row in xlsx_data.iterrows():
+        if first_header in row.values:
+            header_index = idx
+            break
+    
+    if header_index is None:
+        raise ValueError(f"Header '{first_header}' not found in the XLSX file.")
+    
+    # Read the Excel file again, now with the correct header row
+    relevant_data = pd.read_excel(file_path, sheet_name=0, header=header_index)
+    
+    # Create a CSV file path
+    csv_file_path = file_path.replace('.xlsx', '.csv')
+    
+    # Save the relevant data to a CSV file
+    relevant_data.to_csv(csv_file_path, index=False)
+    
+    return csv_file_path
+
+# parse the distance table xlxs into csv
+parse_xlsx('data/WGUPS Package File.xlsx', 'Package\nID') # with above^^^
