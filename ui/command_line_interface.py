@@ -5,10 +5,10 @@ class CommandLineInterface:
     def run(self):
         pass
 
-    def display_package_status(self, package_id):
+    def display_package_status(self, package_id, time):
         pass
 
-    def display_all_packages_status(self):
+    def display_all_packages_status(self, time):
         pass
 
     def display_total_mileage(self):
