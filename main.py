@@ -109,4 +109,16 @@ def parse_xlsx(file_path, first_header):
     return csv_file_path
 
 # parse the distance table xlxs into csv
-parse_xlsx('data/WGUPS Package File.xlsx', 'Package\nID') # with above^^^
+# parse_xlsx('data/WGUPS Distance Table.xlsx', 'Package\nID') # with above^^^
+
+def convert_xlsx_to_csv(file_path):
+    # read the xlsx file
+    xlsx = pd.read_excel(file_path)
+    # create the csv file path
+    csv_file_path = file_path.replace('.xlsx', '.csv')
+    # save the xlsx file as a csv
+    xlsx.to_csv(csv_file_path, index=False)
+    # return the csv file path
+    return csv_file_path
+
+convert_xlsx_to_csv('data/WGUPS Package File.xlsx')

@@ -1,4 +1,5 @@
-*.xlsx
+# Note: I'm removing the ignore for xlsx for now as they'll be useful in testing.
+# *.xlsx
 *.csv
 *.venv
 *.pyc
