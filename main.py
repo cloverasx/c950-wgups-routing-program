@@ -39,10 +39,19 @@ def load_package_data(file_path):
             zip_code = data[4]
             deadline = data[5]
             weight = data[6]
+            note = data[7]
             status = "At Hub"
             # create a package object
             package = Package(
-                package_id, address, city, state, zip_code, deadline, weight, status
+                package_id,
+                address,
+                city,
+                state,
+                zip_code,
+                deadline,
+                weight,
+                note,
+                status,
             )
             # add the package to the list
             packages.append(package)
