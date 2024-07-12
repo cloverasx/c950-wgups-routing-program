@@ -1,5 +1,7 @@
 class Package:
-    def __init__(self, id, address, city, state, zip, deadline, weight, note, status):
+    def __init__(
+        self, id, address, city, state, zip, deadline, weight, status, note=""
+    ):
         self.id = id
         self.address = address
         self.city = city
@@ -7,8 +9,8 @@ class Package:
         self.zip = zip
         self.deadline = deadline
         self.weight = weight
-        self.note = ""
         self.status = status
+        self.note = note
 
     def update_status(self, status):
         self.status = status

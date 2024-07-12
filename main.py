@@ -23,8 +23,8 @@ from utils.data_parsing_utils import DataParsingUtils
 def load_package_data(file_path):
     # open the file in read mode
     with open(file_path, "r") as file:
-        # read the lines from the file
-        lines = file.readlines()
+        # read the lines from the file, skipping the first line (header)
+        lines = file.readlines()[1:]
         # create an empty list to store the packages
         packages = []
         # iterate through the lines
@@ -40,8 +40,8 @@ def load_package_data(file_path):
             deadline = data[5]
             weight = data[6]
             note = data[7]
-            status = "At Hub"
-            # create a package object
+            status = "At Hub"  # initialize status to "At Hub"
+
             package = Package(
                 package_id,
                 address,
@@ -50,13 +50,22 @@ def load_package_data(file_path):
                 zip_code,
                 deadline,
                 weight,
-                note,
                 status,
+                note,
             )
             # add the package to the list
             packages.append(package)
         # return the list of packages
         return packages
+
+
+# load the package data from the file
+packages = load_package_data("data/package_file.csv")
+
+# load the packages into a hash table
+package_table = HashTable()
+for package in packages:
+    package_table.insert(package.id, package)
 
 
 # TODO: Test function after parsing function works
