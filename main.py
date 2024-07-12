@@ -8,13 +8,15 @@
 from datetime import datetime
 
 # local imports
-from algorithms.routing_algorithm import Truck
 from algorithms.routing_algorithm import RoutingAlgorithm
+from algorithms.routing_algorithm import Truck
 from data_structures.package import Package
 from data_structures.hash_table import HashTable
 from ui.command_line_interface import CommandLineInterface
 from utils.distance_calculator import DistanceCalculator
+import utils.time_utils as tu
 from utils.time_utils import TimeUtils
+from utils.data_parsing_utils import DataParsingUtils
 
 
 # TODO: Test function after parsing function works
@@ -75,188 +77,19 @@ def load_distance_table(file_path):
         return distances
 
 
-# TODO: These libraries are associated with the next functions and are only temporary
-# until they are placed in their proper locations in the project.
-import pandas as pd
-import csv
-import re
-import openpyxl
-import re
-
-import utils.string_utils as su
-
-
-def clean_string(s):
-    # Note: I was having problems finding the data in the xlsx file and found
-    # that this could clean up the data.
-    s = str(s)
-    s = su.remove_commas(s)
-    s = su.clean_whitespace(s)
-    s = su.convert_to_lowercase(s)
-    return s
-
-
-# TODO: the following works well with the package file currently. Will need updated for
-# the distance table file and any logic checking and error handling.
-def process_package_file(file_path):
-    workbook = openpyxl.load_workbook(file_path)
-    worksheet = workbook.active
-    header_row = None
-    for row_index, row in enumerate(
-        worksheet.iter_rows(min_row=1, max_row=worksheet.max_row), start=1
-    ):
-        cell_values = [clean_string(cell.value) for cell in row]
-        # print(f"Row {row_index}: {cell_values}")  # Debugging output
-        if "address" in cell_values and "city" in cell_values:
-            header_row = row_index
-            # print(f"Header row found at row {header_row}")  # Debugging output
-            break
-    if header_row is None:
-        raise ValueError(
-            "Could not find a header row containing both 'address' and 'city'."
-        )
-    headers = [clean_string(cell.value) for cell in worksheet[header_row] if cell.value]
-    # print(f"Headers: {headers}")  # Debugging output
-    data = []
-    for row in worksheet.iter_rows(
-        min_row=header_row + 1, max_row=worksheet.max_row, values_only=True
-    ):
-        if any(cell for cell in row):
-            data.append(
-                [clean_string(cell) if cell else "" for cell in row[: len(headers)]]
-            )
-    return headers, data
-
-
-# Debugging output
+# Convert package file xlsx to csv
 try:
-    file_path = "data/WGUPS Package File.xlsx"
-    package_headers, package_data = process_package_file(file_path)
-    print("Number of data rows:", len(package_data))
-    print("First data row:", package_data[0])
+    file_path = "data/WGUPS Package File.xlsx"  # TODO: Change to CONSTANT
+    package_headers, package_data = DataParsingUtils.process_package_file(file_path)
+    DataParsingUtils.save_package_file(package_headers, package_data)
 except Exception as e:
     print(f"An error occurred: {str(e)}")
 
-# Debugging output
-with open("temp.csv", "w", newline="") as f:
-    writer = csv.writer(f)
-    writer.writerow(package_headers)
-    for row in package_data:
-        writer.writerow(row)
-
-
-import openpyxl
-import re
-
-
-# TODO: this is going to need to be cleaned up for the output, but the current version
-# works for now.
-def process_distance_table(file_path):
-    workbook = openpyxl.load_workbook(file_path)
-    worksheet = workbook.active
-
-    # Find the last row with data in all columns
-    last_full_row = None
-    for row in reversed(list(worksheet.rows)):
-        if all(cell.value is not None for cell in row):
-            last_full_row = row
-            break
-
-    if last_full_row is None:
-        raise ValueError("Could not find a fully populated row in the distance table.")
-
-    # Determine the number of columns in the matrix
-    matrix_size = sum(1 for cell in last_full_row if cell.value is not None)
-
-    # Calculate the start row
-    start_row = last_full_row[0].row - matrix_size + 1
-
-    # Extract location names and distances
-    locations = []
-    distances = []
-    for row in worksheet.iter_rows(
-        min_row=start_row, max_row=last_full_row[0].row, values_only=True
-    ):
-        location_name = clean_string(row[0])
-        locations.append(location_name)
-        # Start from index 1 to skip the first column (location name)
-        row_distances = [
-            float(cell) if isinstance(cell, (int, float)) else 0
-            for cell in row[1:matrix_size]
-        ]
-        distances.append(row_distances)
-
-    return locations, distances
-
-
-import openpyxl
-import csv
-
-
-# def process_distance_table(file_path):
-#     workbook = openpyxl.load_workbook(file_path)
-#     worksheet = workbook.active
-
-#     # Find the last row with data in all columns
-#     last_full_row = None
-#     for row in reversed(list(worksheet.rows)):
-#         if all(cell.value is not None for cell in row):
-#             last_full_row = row
-#             break
-
-#     if last_full_row is None:
-#         raise ValueError("Could not find a fully populated row in the distance table.")
-
-#     # Determine the number of columns in the matrix
-#     matrix_size = sum(1 for cell in last_full_row if cell.value is not None)
-
-#     # Calculate the start row
-#     start_row = last_full_row[0].row - matrix_size + 1
-
-#     # Extract location names and distances
-#     locations = []
-#     distances = []
-#     for row in worksheet.iter_rows(
-#         min_row=start_row, max_row=last_full_row[0].row, values_only=True
-#     ):
-#         location_name = clean_string(row[0])
-#         locations.append(location_name)
-#         # Start from index 1 to skip the first column (location name)
-#         row_distances = [
-#             float(cell) if isinstance(cell, (int, float)) else 0
-#             for cell in row[1:matrix_size]
-#         ]
-#         distances.append(row_distances)
-
-#     return locations, distances
-
-
-def save_to_csv(locations, distances, output_file):
-    with open(output_file, "w", newline="") as file:
-        writer = csv.writer(file)
-        # Write the header row (assuming all locations are used)
-        writer.writerow(
-            ["Location"] + [f"Distance_{i+1}" for i in range(len(locations))]
-        )
-        for i, distances_row in enumerate(distances):
-            writer.writerow([locations[i]] + distances_row)
-
-
-# Example usage:
-file_path = "data/WGUPS Distance Table.xlsx"
-output_file = "temp_locations.csv"
-locations, distances = process_distance_table(file_path)
-save_to_csv(locations, distances, output_file)
-
-
-# Usage
+# Convert distance table xlsx to csv
 try:
-    file_path = "data/WGUPS Distance Table.xlsx"
-    locations, distances = process_distance_table(file_path)
-    print(f"Number of locations: {len(locations)}")
-    print(f"First location: {locations[0]}")
-    print(f"Last location: {locations[-1]}")
-    print(f"Size of distance matrix: {len(distances)}x{len(distances[0])}")
-    print(f"First row of distances: {distances[0]}")
+    file_path = "data/WGUPS Distance Table.xlsx"  # TODO: Change to CONSTANT
+    output_file = "data/distance_table.csv"
+    locations, distances = DataParsingUtils.process_distance_table(file_path)
+    DataParsingUtils.save_distance_file(locations, distances, output_file)
 except Exception as e:
     print(f"An error occurred: {str(e)}")
