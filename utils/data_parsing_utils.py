@@ -73,30 +73,50 @@ class DataParsingUtils:
                 last_full_row = row
                 break
 
+        # debug: print the row number for the last full row
+        print(f"Last full row: {last_full_row[0].row}")
+
         if last_full_row is None:
             raise ValueError(
                 "Could not find a fully populated row in the distance table."
             )
 
-        # Determine the number of columns in the matrix
-        matrix_size = sum(1 for cell in last_full_row if cell.value is not None)
-
-        # Calculate the start row
-        start_row = last_full_row[0].row - (matrix_size - 3)
+        # Determine the valid data range
+        matrix_size = len(last_full_row)
+        start_row = last_full_row[0].row - (matrix_size - 3)  # 0-index + headers
 
         # Extract location names and distances
         locations = []
         distances = []
-        for row in worksheet.iter_rows(
-            min_row=start_row, max_row=last_full_row[0].row, values_only=True
+        for row_index, row in enumerate(
+            worksheet.iter_rows(
+                min_row=start_row, max_row=last_full_row[0].row, values_only=True
+            ),
+            start=0,
         ):
-            location_name = DataParsingUtils.clean_string(row[0])
-            locations.append(location_name)
-            # Start from index 1 to skip the first column (location name)
-            row_distances = [
-                float(cell) if isinstance(cell, (int, float)) else 0
-                for cell in row[1:matrix_size]
-            ]
+            location_name = next(
+                (
+                    line.strip()
+                    for line in str(row[0]).split("\n")
+                    if line.strip() and line.strip()[0].isdigit()
+                ),
+                "",
+            )
+            street_address = DataParsingUtils.clean_string(location_name)
+            locations.append(street_address)
+
+            row_distances = []
+            for col_index in range(2, matrix_size):
+                cell = row[col_index]
+                if isinstance(cell, (int, float)):
+                    row_distances.append(float(cell))
+                else:
+                    # If cell is empty, get the symmetric value
+                    symmetric_cell = worksheet.cell(
+                        row=start_row + col_index - 2, column=row_index + 3
+                    ).value
+                    row_distances.append(float(symmetric_cell) if symmetric_cell else 0)
+
             distances.append(row_distances)
 
         return locations, distances
@@ -107,7 +127,8 @@ class DataParsingUtils:
             writer = csv.writer(file)
             # Write the header row
             writer.writerow(
-                ["Location"] + [f"Distance_{i+1}" for i in range(len(locations))]
+                # ["location"] + [f"Distance_{i+1}" for i in range(len(locations))]
+                ["location"] + locations
             )
             for i, distances_row in enumerate(distances):
                 writer.writerow([locations[i]] + distances_row)
