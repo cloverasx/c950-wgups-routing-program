@@ -10,9 +10,19 @@ class Graph:
         self.add_node(from_node)
         self.add_node(to_node)
         self.nodes[from_node][to_node] = distance
-        self.nodes[to_node][from_node] = distance  # because the graph is undirected
+        self.nodes[to_node][from_node] = distance
 
     def get_distance(self, from_node, to_node):
         from_node = from_node.lower()
         to_node = to_node.lower()
         return self.nodes.get(from_node, {}).get(to_node)
+
+    def get_nodes(self):
+        return list(self.nodes.keys())
+
+    def get_edges(self):
+        edges = []
+        for from_node in self.nodes:
+            for to_node in self.nodes[from_node]:
+                edges.append((from_node, to_node, self.nodes[from_node][to_node]))
+        return edges

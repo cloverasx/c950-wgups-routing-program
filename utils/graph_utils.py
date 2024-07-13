@@ -1,6 +1,9 @@
 from data_structures.graph import Graph
 
 
+# This class doubles the necessary data and should be optimized to only have one
+# instance of each node-edge-node relationship since they're symmetric. This isn't
+# a critical issue, but worth noting and adjusting in the future.
 class GraphUtils:
     @staticmethod
     def load_distance_graph(file_path):

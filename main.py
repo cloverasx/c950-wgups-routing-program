@@ -59,3 +59,13 @@ algorithms = [NearestNeighbor, GreedyAlgorithm]
 results = compare_algorithms(packages, distance_graph, algorithms)
 for result in results:
     print(f"{result['algorithm']}: {result['distance']} miles")
+
+# print each node on a new line
+print("\nNodes:")
+for node in distance_graph.get_nodes():
+    print(node)
+
+# print each edge on a new line
+print("\nEdges:")
+for edge in distance_graph.get_edges():
+    print(edge)
