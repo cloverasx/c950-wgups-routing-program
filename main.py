@@ -12,48 +12,14 @@ from algorithms.routing_algorithm import RoutingAlgorithm
 from algorithms.routing_algorithm import Truck
 from data_structures.package import Package
 from data_structures.hash_table import HashTable
+from data_structures.graph import Graph
 from ui.command_line_interface import CommandLineInterface
 from utils.distance_calculator import DistanceCalculator
 import utils.time_utils as tu
 from utils.time_utils import TimeUtils
 from utils.data_parsing_utils import DataParsingUtils
 from utils.data_hashing_utils import DataHashingUtils
-
-
-# load the package data from the file
-packages = DataHashingUtils.load_package_data("data/package_file.csv")
-
-# load the packages into a hash table
-package_table = HashTable()
-for package in packages:
-    package_table.insert(package.id, package)
-
-
-# TODO: Test function after parsing function works
-def load_distance_table(file_path):
-    # open the file in read mode
-    with open(file_path, "r") as file:
-        # read the lines from the file
-        lines = file.readlines()
-        # create an empty dictionary to store the distances
-        distances = {}
-        # iterate through the lines
-        for line in lines:
-            # split the line by the comma
-            data = line.strip().split(",")
-            # extract the addresses and distances
-            address1 = data[0]
-            address2 = data[1]
-            distance = float(data[2])
-            # check if the address is already in the dictionary
-            if address1 in distances:
-                # add the distance to the existing address
-                distances[address1][address2] = distance
-            else:
-                # create a new entry for the address
-                distances[address1] = {address2: distance}
-        # return the dictionary of distances
-        return distances
+from utils.graph_utils import GraphUtils
 
 
 # Convert package file xlsx to csv
@@ -72,3 +38,14 @@ try:
     DataParsingUtils.save_distance_file(locations, distances, output_file)
 except Exception as e:
     print(f"An error occurred: {str(e)}")
+
+# load the package data from the file
+packages = DataHashingUtils.load_package_data("data/package_file.csv")
+
+# load the packages into a hash table
+package_table = HashTable()
+for package in packages:
+    package_table.insert(package.id, package)
+
+# load the distance graph from the file
+distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
