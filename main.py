@@ -9,7 +9,7 @@ from datetime import datetime
 
 # local imports
 from algorithms.routing_algorithm import RoutingAlgorithm
-from algorithms.routing_algorithm import Truck
+from data_structures.truck import Truck
 from data_structures.package import Package
 from data_structures.hash_table import HashTable
 from data_structures.graph import Graph
@@ -20,6 +20,11 @@ from utils.time_utils import TimeUtils
 from utils.data_parsing_utils import DataParsingUtils
 from utils.data_hashing_utils import DataHashingUtils
 from utils.graph_utils import GraphUtils
+from algorithms.routing_algorithm import (
+    NearestNeighbor,
+    GreedyAlgorithm,
+    compare_algorithms,
+)
 
 
 # Convert package file xlsx to csv
@@ -49,3 +54,8 @@ for package in packages:
 
 # load the distance graph from the file
 distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
+
+algorithms = [NearestNeighbor, GreedyAlgorithm]
+results = compare_algorithms(packages, distance_graph, algorithms)
+for result in results:
+    print(f"{result['algorithm']}: {result['distance']} miles")
