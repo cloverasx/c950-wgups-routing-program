@@ -4,16 +4,6 @@ from utils.string_utils import StringUtils as su
 
 
 class DataParsingUtils:
-    @staticmethod
-    def clean_string(s):
-        # Note: I was having problems finding the data in the xlsx file and found
-        # that this could clean up the data.
-        s = str(s)
-        s = su.remove_commas(s)
-        s = su.clean_whitespace(s)
-        s = su.convert_to_lowercase(s)
-        return s
-
     # TODO: the following works well with the package file currently. Will need updated for
     # the distance table file and any logic checking and error handling.
     @staticmethod
@@ -24,7 +14,7 @@ class DataParsingUtils:
         for row_index, row in enumerate(
             worksheet.iter_rows(min_row=1, max_row=worksheet.max_row), start=1
         ):
-            cell_values = [DataParsingUtils.clean_string(cell.value) for cell in row]
+            cell_values = [su.clean_string(cell.value) for cell in row]
             # print(f"Row {row_index}: {cell_values}")  # Debugging output
             if "address" in cell_values and "city" in cell_values:
                 header_row = row_index
@@ -35,9 +25,7 @@ class DataParsingUtils:
                 "Could not find a header row containing both 'address' and 'city'."
             )
         headers = [
-            DataParsingUtils.clean_string(cell.value)
-            for cell in worksheet[header_row]
-            if cell.value
+            su.clean_string(cell.value) for cell in worksheet[header_row] if cell.value
         ]
         # print(f"Headers: {headers}")  # Debugging output
         data = []
@@ -47,7 +35,7 @@ class DataParsingUtils:
             if any(cell for cell in row):
                 data.append(
                     [
-                        DataParsingUtils.clean_string(cell) if cell else ""
+                        su.clean_string(cell) if cell else ""
                         for cell in row[: len(headers)]
                     ]
                 )
@@ -102,7 +90,7 @@ class DataParsingUtils:
                 ),
                 "",
             )
-            street_address = DataParsingUtils.clean_string(location_name)
+            street_address = su.clean_string(location_name)
             locations.append(street_address)
 
             row_distances = []

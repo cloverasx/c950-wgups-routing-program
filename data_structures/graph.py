@@ -1,3 +1,6 @@
+from utils.string_utils import StringUtils as su
+
+
 class Graph:
     def __init__(self):
         self.nodes = {}
@@ -13,8 +16,8 @@ class Graph:
         self.nodes[to_node][from_node] = distance
 
     def get_distance(self, from_node, to_node):
-        from_node = from_node.lower()
-        to_node = to_node.lower()
+        from_node = su.clean_string(from_node)
+        to_node = su.clean_string(to_node)
         return self.nodes.get(from_node, {}).get(to_node)
 
     def get_nodes(self):

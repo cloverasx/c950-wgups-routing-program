@@ -55,17 +55,21 @@ for package in packages:
 # load the distance graph from the file
 distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
 
-algorithms = [NearestNeighbor, GreedyAlgorithm]
-results = compare_algorithms(packages, distance_graph, algorithms)
-for result in results:
-    print(f"{result['algorithm']}: {result['distance']} miles")
+nn_algorithm = NearestNeighbor(distance_graph, package_table)
+route, route_dict = nn_algorithm.route()
+total_distance = nn_algorithm.get_total_distance()
 
-# print each node on a new line
-print("\nNodes:")
-for node in distance_graph.get_nodes():
-    print(node)
+# debug: print the route dict
+print("Route Dict:")
+print(
+    f"{'Package ID:':<12}{'Address:':<35}{'Distance:':<15}{'Cumulative Distance:':<20}"
+)
+print("-" * 82)  # Print a separator line
+for key, value in route_dict.items():
+    print(
+        f"{key:<12}{value['address']:<35}{value['distance']:<15.2f}{value['cumulative_distance']:<20.2f}"
+    )
 
-# print each edge on a new line
-print("\nEdges:")
-for edge in distance_graph.get_edges():
-    print(edge)
+
+# print(f"Nearest Neighbor: {route}")
+print(f"Total Distance: {total_distance} miles")

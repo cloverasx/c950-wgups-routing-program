@@ -30,5 +30,12 @@ class HashTable:
                 return
         raise KeyError(key)  # Key not found
 
+    def get_all_ids(self):
+        ids = []
+        for bucket in self.table:
+            for item in bucket:
+                ids.append(item[0])
+        return ids
+
     def __str__(self):
         return str(self.table)
