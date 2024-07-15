@@ -21,72 +21,60 @@ class NearestNeighbor(RoutingAlgorithm):
         super().__init__(graph, packages)
         self.graph = graph
         self.packages = packages
-        self.hub = hub if hub is not None else "4001 south 700 east"
+        self.hub = hub or "4001 south 700 east"
         self.route_list = []
-        self.total_distance = 0
-        # empty verbose route dict including the package id, address, and distance from
-        # the previous location
         self.route_dict = {}
+        self.total_distance = 0
 
     def route(self):
         undelivered = deque(self.packages.get_all_ids())
         current_location = self.hub
 
         while undelivered:
-            # Find the nearest package
-            nearest_package_id = min(
-                undelivered,
-                key=lambda pid: self.graph.get_distance(
-                    current_location, self.packages.lookup(pid).address
-                ),
+            nearest_package_id = self._find_nearest_package(
+                current_location, undelivered
             )
-
-            # add pid, address, and distance to the route dict
-            self.route_dict[nearest_package_id] = {
-                "pid": nearest_package_id,
-                "address": self.packages.lookup(nearest_package_id).address,
-                "distance": self.graph.get_distance(
-                    current_location, self.packages.lookup(nearest_package_id).address
-                ),
-                "cumulative_distance": self.total_distance
-                + self.graph.get_distance(
-                    current_location, self.packages.lookup(nearest_package_id).address
-                ),
-            }
-
-            # Move to the nearest package
-            nearest_package = self.packages.lookup(nearest_package_id)
-            distance_to_next = self.graph.get_distance(
-                current_location, nearest_package.address
-            )
-
-            # Update route and distance
-            self.route_list.append((nearest_package_id, nearest_package.address))
-            self.total_distance += distance_to_next
-
-            # debug: catch end of route
-            if nearest_package_id == 11:
-                pass
-
-            # Update current location and remove package from undelivered
-            current_location = nearest_package.address
+            self._update_route(nearest_package_id, current_location)
+            current_location = self.packages.lookup(nearest_package_id).address
             undelivered.remove(nearest_package_id)
 
-        # add hub to route dict
+        self._return_to_hub(current_location)
+        return self.route_list, self.route_dict
+
+    def _find_nearest_package(self, current_location, undelivered):
+        return min(
+            undelivered,
+            key=lambda pid: self.graph.get_distance(
+                current_location, self.packages.lookup(pid).address
+            ),
+        )
+
+    def _update_route(self, package_id, current_location):
+        package = self.packages.lookup(package_id)
+        distance_to_next = self.graph.get_distance(current_location, package.address)
+
+        self.route_dict[package_id] = {
+            "pid": package_id,
+            "address": package.address,
+            "distance": distance_to_next,
+            "cumulative_distance": self.total_distance + distance_to_next,
+        }
+
+        self.route_list.append((package_id, package.address))
+        self.total_distance += distance_to_next
+
+    def _return_to_hub(self, current_location):
+        distance_to_hub = self.graph.get_distance(current_location, self.hub)
+
         self.route_dict["Hub"] = {
             "pid": "Hub",
             "address": self.hub,
-            "distance": self.graph.get_distance(current_location, self.hub),
-            "cumulative_distance": self.total_distance
-            + self.graph.get_distance(current_location, self.hub),
+            "distance": distance_to_hub,
+            "cumulative_distance": self.total_distance + distance_to_hub,
         }
 
-        # Return to hub
-        self.total_distance += self.graph.get_distance(current_location, self.hub)
+        self.total_distance += distance_to_hub
         self.route_list.append(("Return", self.hub))
-
-        # Return the route
-        return self.route_list, self.route_dict
 
     def get_total_distance(self):
         return self.total_distance
