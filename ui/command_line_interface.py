@@ -1,6 +1,6 @@
 class CommandLineInterface:
-    def __init__(self, delivery_system):
-        self.delivery_system = delivery_system
+    def __init__(self):
+        pass
 
     def run(self):
         pass

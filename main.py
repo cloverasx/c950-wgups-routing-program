@@ -8,7 +8,6 @@
 from datetime import datetime
 
 # local imports
-from algorithms.routing_algorithm import RoutingAlgorithm
 from data_structures.truck import Truck
 from data_structures.package import Package
 from data_structures.hash_table import HashTable
@@ -20,11 +19,7 @@ from utils.time_utils import TimeUtils
 from utils.data_parsing_utils import DataParsingUtils
 from utils.data_hashing_utils import DataHashingUtils
 from utils.graph_utils import GraphUtils
-from algorithms.routing_algorithm import (
-    NearestNeighbor,
-    GreedyAlgorithm,
-    compare_algorithms,
-)
+from algorithms.routing_algorithm import NearestNeighbor
 
 
 # Convert package file xlsx to csv
@@ -55,21 +50,26 @@ for package in packages:
 # load the distance graph from the file
 distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
 
-nn_algorithm = NearestNeighbor(distance_graph, package_table)
-route, route_dict = nn_algorithm.route()
-total_distance = nn_algorithm.get_total_distance()
 
-# debug: print the route dict
-print("Route Dict:")
-print(
-    f"{'Package ID:':<12}{'Address:':<35}{'Distance:':<15}{'Cumulative Distance:':<20}"
-)
-print("-" * 82)  # Print a separator line
-for key, value in route_dict.items():
-    print(
-        f"{key:<12}{value['address']:<35}{value['distance']:<15.2f}{value['cumulative_distance']:<20.2f}"
-    )
+def test_algorithm(algorithm, alg_name):
+    # algorithm = NearestNeighbor(distance_graph, package_table)
+    route = algorithm.route()
+    total_distance = algorithm.get_total_distance()
+
+    print(f"{alg_name}:")
+    for each in route:
+        print(each)
+    # print(
+    #     f"{'Package ID:':<12}{'Address:':<35}{'Distance:':<15}{'Cumulative Distance:':<20}"
+    # )
+    # print("-" * 82)  # Print a separator line
+    # for key, value in route_dict.items():
+    #     print(
+    #         f"{key:<12}{value['address']:<35}{value['distance']:<15.2f}{value['cumulative_distance']:<20.2f}"
+    #     )
+
+    # print(f"Nearest Neighbor: {route}")
+    print(f"Total Distance: {total_distance} miles")
 
 
-# print(f"Nearest Neighbor: {route}")
-print(f"Total Distance: {total_distance} miles")
+test_algorithm(NearestNeighbor(distance_graph, package_table), "Nearest Neighbor")
