@@ -58,24 +58,26 @@ package_table.insert(9, package_9)
 
 
 def test_algorithm(algorithm, alg_name):
-    # algorithm = NearestNeighbor(distance_graph, package_table)
     route = algorithm.route()
     total_distance = algorithm.get_total_distance()
 
     print(f"{alg_name}:")
     for each in route:
         print(each)
-    # print(
-    #     f"{'Package ID:':<12}{'Address:':<35}{'Distance:':<15}{'Cumulative Distance:':<20}"
-    # )
-    # print("-" * 82)  # Print a separator line
-    # for key, value in route_dict.items():
-    #     print(
-    #         f"{key:<12}{value['address']:<35}{value['distance']:<15.2f}{value['cumulative_distance']:<20.2f}"
-    #     )
-
-    # print(f"Nearest Neighbor: {route}")
     print(f"Total Distance: {total_distance} miles")
 
 
 test_algorithm(NearestNeighbor(distance_graph, package_table), "Nearest Neighbor")
+
+truck_one = Truck(16, 18)
+truck_two = Truck(16, 18)
+truck_three = Truck(16, 18)
+
+# load the packages into the first truck
+t1_route = NearestNeighbor(distance_graph, package_table).route()
+for each in t1_route:
+    if each[0] != "Hub":
+        truck_one.load_package(package_table.lookup(each[0]))
+
+# deliver the packages for the first truck
+truck_one.deliver_packages()

@@ -15,6 +15,9 @@ class Package:
     def update_status(self, status):
         self.status = status
 
+    def deliver(self, status):
+        self.status or "Delivered"
+
     def __str__(self):
         return (
             f"Package ID: {self.id}\n"
