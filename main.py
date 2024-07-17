@@ -50,6 +50,12 @@ for package in packages:
 # load the distance graph from the file
 distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
 
+# specifically handle package 9 for wrong address
+# update package.note to include a delay until 10:20 am
+package_9 = package_table.lookup(9)
+package_9.note = "Delayed until 10:20 am"
+package_table.insert(9, package_9)
+
 
 def test_algorithm(algorithm, alg_name):
     # algorithm = NearestNeighbor(distance_graph, package_table)
