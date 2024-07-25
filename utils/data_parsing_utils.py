@@ -61,9 +61,6 @@ class DataParsingUtils:
                 last_full_row = row
                 break
 
-        # debug: print the row number for the last full row
-        print(f"Last full row: {last_full_row[0].row}")
-
         if last_full_row is None:
             raise ValueError(
                 "Could not find a fully populated row in the distance table."
@@ -120,3 +117,13 @@ class DataParsingUtils:
             )
             for i, distances_row in enumerate(distances):
                 writer.writerow([locations[i]] + distances_row)
+
+    @staticmethod
+    def convert_distance_file_to_csv(file_path, output_file):
+        locations, distances = DataParsingUtils.process_distance_table(file_path)
+        DataParsingUtils.save_distance_file(locations, distances, output_file)
+
+    @staticmethod
+    def convert_package_file_to_csv(file_path, output_file):
+        package_headers, package_data = DataParsingUtils.process_package_file(file_path)
+        DataParsingUtils.save_package_file(package_headers, package_data)

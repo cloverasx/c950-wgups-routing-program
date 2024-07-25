@@ -1,22 +1,38 @@
 from data_structures.package import Package
-from utils.graph_utils import GraphUtils
 from data_structures.graph import Graph
+from data_structures.route import Route
+import config
 import datetime
 
 
 class Truck:
-    def __init__(self, capacity, speed):
+    def __init__(self, id, capacity, speed, current_time):
+        self.id = id
         self.capacity = capacity
         self.speed = speed
         self.packages = []
-        self.current_location = "4300 s 1300 e"  # HUB location
+        self.delivered_packages = []
+        self.current_location = config.HUB_LOCATION
+        self.total_mileage = 0
+        self.next_delivery_time = None
+        self.is_driving = False
+        self.driver = None
         self.distance_graph = None
+        self.current_time = current_time
 
-        self.current_time = datetime.time(8, 0)
+    @classmethod
+    def set_graph(cls, graph):
+        cls.distance_graph = graph
+
+    def assign_driver(self, driver):
+        self.driver = driver
 
     def load_package(self, package):
         self.packages.append(package)
-        self.distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
+        if self.packages:
+            self.next_delivery_time = self._calculate_delivery_time(
+                self.packages[0].address
+            )
 
     def deliver_packages(self):
         for package in self.packages:
@@ -30,7 +46,7 @@ class Truck:
         print(f"Package {package.id} delivered at {delivery_time}")
 
     def _calculate_delivery_time(self, location):
-        distance = self.distance_graph.get_distance(self.current_location, location)
+        distance = Route.distance_graph.get_distance(self.current_location, location)
         # get the time to reach location
         time_delta = datetime.timedelta(hours=distance / self.speed)
         delivery_time = (
@@ -39,3 +55,9 @@ class Truck:
         ).time()
         self.current_time = delivery_time
         return delivery_time
+
+    def begin_route(self):
+        self.is_driving = True
+        self.next_delivery_time = self._calculate_delivery_time(
+            self.packages[0].address
+        )

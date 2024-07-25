@@ -1,7 +1,10 @@
 from data_structures.truck import Truck
 from data_structures.hash_table import HashTable
-from utils.data_hashing_utils import DataHashingUtils
-from utils.graph_utils import GraphUtils
+from data_structures.graph import Graph
+from data_structures.truck_driver import TruckDriver
+from data_structures.route import Route, RoutePlanner
+import config
+import time
 
 import datetime
 
@@ -12,34 +15,78 @@ class DeliverySimulation:
         self.package_table = HashTable()
         self.distance_graph = None
         self.trucks = []
-        self.packages_at_hub = set()
-        self.delivered_packages = set()
+        self.truck_drivers = []
+        self.packages_at_hub = False
+        self.algorithm = config.ALGORITHM
 
+        # Load package and distance data from spreadsheets
         self._load_package_data(package_file)
         self._load_distance_data(distance_file)
         self._initialize_trucks()
+        self._initialize_truck_drivers()
+        Route.set_algorithm(self.algorithm)
+        Route.set_graph(self.distance_graph)
+        Truck.set_graph(self.distance_graph)
+
+    def _get_current_time(self):
+        return self.current_time
 
     def _load_package_data(self, file_path):
-        packages = DataHashingUtils.load_package_data(file_path)
-        for package in packages:
-            self.package_table.insert(package.id, package)
-            self.packages_at_hub.add(package.id)
+        self.package_table = HashTable(file_path)
+        if len(self.package_table) > 0:
+            self.packages_at_hub = True
 
     def _load_distance_data(self, file_path):
-        self.distance_graph = GraphUtils.load_distance_graph(file_path)
+        self.distance_graph = Graph(file_path)
 
     def _initialize_trucks(self):
         # Create 3 trucks as per the scenario
-        for _ in range(3):
-            self.trucks.append(Truck(16, 18))  # 16 package capacity, 18 mph speed
+        for i in range(1, config.TRUCK_COUNT + 1):
+            self.trucks.append(
+                Truck(
+                    id=i,
+                    capacity=config.TRUCK_CAPACITY,
+                    speed=config.TRUCK_SPEED,
+                    current_time=self._get_current_time(),
+                )
+            )
+
+    def _initialize_truck_drivers(self):
+        # Create 2 drivers as per the scenario
+        for i in range(1, config.DRIVER_COUNT + 1):
+            self.truck_drivers.append(TruckDriver(id=i))
+
+    # TODO: Implement route planning logic
+    def _plan_route(self):
+        RoutePlanner.plan_routes(self.package_table, self.trucks, self.current_time)
+        for truck in self.trucks:
+            print(f"Truck {truck.id} package list:")
+            for package in truck.packages:
+                print(f"PID {package.id}")
+
+        print()
+
+    def _add_package_with_wrong_address(self):
+        package_9 = self.package_table.lookup(9)
+        package_9.note = "delayed until 10:20 am"
+        self.package_table.insert(9, package_9)
 
     def run_simulation(self):
+        # specifically handle package 9 for wrong address
+        # update package.note to include a delay until 10:20 am
+        self._add_package_with_wrong_address()
         while self.packages_at_hub or any(truck.packages for truck in self.trucks):
+            self._plan_route()
             self._load_trucks()
             self._deliver_packages()
             self._update_time()
 
     def _load_trucks(self):
+        #### I'M HERE ####
+        # THIS NEEDS TO ROUTE BASED ON TWO DRIVERS BEING AVAILABLE AT THE SAME TIME FIRST
+        # ACTUALLY DO THE PLAN ROUTE FIRST**
+        ##################
+
         for truck in self.trucks:
             if not truck.is_full() and not truck.is_en_route:
                 available_packages = self._get_available_packages()

@@ -7,77 +7,54 @@
 
 from datetime import datetime
 
+
 # local imports
 from data_structures.truck import Truck
 from data_structures.package import Package
 from data_structures.hash_table import HashTable
 from data_structures.graph import Graph
 from ui.command_line_interface import CommandLineInterface
-from utils.distance_calculator import DistanceCalculator
-import utils.time_utils as tu
-from utils.time_utils import TimeUtils
 from utils.data_parsing_utils import DataParsingUtils
-from utils.data_hashing_utils import DataHashingUtils
-from utils.graph_utils import GraphUtils
-from algorithms.routing_algorithm import NearestNeighbor
+from data_structures.route import NearestNeighbor
+from delivery_simulation import DeliverySimulation
+import config
 
 
-# Convert package file xlsx to csv
-try:
-    file_path = "data/WGUPS Package File.xlsx"  # TODO: Change to CONSTANT
-    package_headers, package_data = DataParsingUtils.process_package_file(file_path)
-    DataParsingUtils.save_package_file(package_headers, package_data)
-except Exception as e:
-    print(f"An error occurred: {str(e)}")
+def main():
+    # Convert Excel files to CSV if needed
+    DataParsingUtils.process_package_file(config.PACKAGE_FILE)
+    DataParsingUtils.process_distance_table(config.DISTANCE_FILE)
+    DataParsingUtils.convert_package_file_to_csv(
+        config.PACKAGE_FILE, config.PACKAGE_FILE_CSV
+    )
+    DataParsingUtils.convert_distance_file_to_csv(
+        config.DISTANCE_FILE, config.DISTANCE_FILE_CSV
+    )
 
-# Convert distance table xlsx to csv
-try:
-    file_path = "data/WGUPS Distance Table.xlsx"  # TODO: Change to CONSTANT
-    output_file = "data/distance_table.csv"
-    locations, distances = DataParsingUtils.process_distance_table(file_path)
-    DataParsingUtils.save_distance_file(locations, distances, output_file)
-except Exception as e:
-    print(f"An error occurred: {str(e)}")
+    # Initialize and run the simulation
+    simulation = DeliverySimulation(config.PACKAGE_FILE_CSV, config.DISTANCE_FILE_CSV)
+    simulation.run_simulation()
 
-# load the package data from the file
-packages = DataHashingUtils.load_package_data("data/package_file.csv")
+    # Display results
+    # print(f"Total mileage: {simulation.get_total_mileage()}")
 
-# load the packages into a hash table
-package_table = HashTable()
-for package in packages:
-    package_table.insert(package.id, package)
-
-# load the distance graph from the file
-distance_graph = GraphUtils.load_distance_graph("data/distance_table.csv")
-
-# specifically handle package 9 for wrong address
-# update package.note to include a delay until 10:20 am
-package_9 = package_table.lookup(9)
-package_9.note = "Delayed until 10:20 am"
-package_table.insert(9, package_9)
-
-
-def test_algorithm(algorithm, alg_name):
-    route = algorithm.route()
-    total_distance = algorithm.get_total_distance()
-
-    print(f"{alg_name}:")
-    for each in route:
-        print(each)
-    print(f"Total Distance: {total_distance} miles")
+    # # Implement user interface for checking package status
+    # while True:
+    #     user_input = input(
+    #         "Enter a time to check package status (HH:MM) or 'q' to quit: "
+    #     )
+    #     if user_input.lower() == "q":
+    #         break
+    #     try:
+    #         check_time = datetime.datetime.strptime(user_input, "%H:%M").time()
+    #         package_id = int(input("Enter package ID: "))
+    #         status = simulation.get_package_status(package_id, check_time)
+    #         print(f"Package {package_id} status at {user_input}: {status}")
+    #     except ValueError:
+    #         print(
+    #             "Invalid input. Please use HH:MM format for time and a valid package ID."
+    #         )
 
 
-test_algorithm(NearestNeighbor(distance_graph, package_table), "Nearest Neighbor")
-
-truck_one = Truck(16, 18)
-truck_two = Truck(16, 18)
-truck_three = Truck(16, 18)
-
-# load the packages into the first truck
-t1_route = NearestNeighbor(distance_graph, package_table).route()
-for each in t1_route:
-    if each[0] != "Hub":
-        truck_one.load_package(package_table.lookup(each[0]))
-
-# deliver the packages for the first truck
-truck_one.deliver_packages()
+if __name__ == "__main__":
+    main()
