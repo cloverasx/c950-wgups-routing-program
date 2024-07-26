@@ -173,15 +173,15 @@ class RoutePlanner:
         # debug:
         print(Route.distance_graph)
 
-        # update delayed packages
-        Route._update_delayed_packages(packages, current_time)
-        # group packages by priority, delayed, and truck-specific
-        priority_packages = Route.get_priority_packages(packages, current_time)
-        group_packages = Route.get_group_packages(packages, current_time)
-        delayed_packages = Route.get_delayed_packages(current_time, packages)
-
         # assign packages to trucks
         for truck in trucks:
+            # update delayed packages
+            Route._update_delayed_packages(packages, current_time)
+            # group packages by priority, delayed, and truck-specific
+            priority_packages = Route.get_priority_packages(packages, current_time)
+            group_packages = Route.get_group_packages(packages, current_time)
+            delayed_packages = Route.get_delayed_packages(current_time, packages)
+
             RoutePlanner._assign_packages_to_truck(
                 truck,
                 priority_packages,
@@ -190,6 +190,11 @@ class RoutePlanner:
                 packages,
                 current_time,
             )
+
+        # debug:
+        for truck in trucks:
+            # id_list = [p.id for p in truck.packages]
+            print(f"Truck {truck.id} package list: {[p.id for p in truck.packages]}")
 
         # optimize routes
         for truck in trucks:
@@ -217,6 +222,12 @@ class RoutePlanner:
             for p in priority_packages
             if p not in delayed_packages and Route._can_deliver_on_truck(p, truck)
         ]
+
+        # debug:
+        print("available packages:")
+        for package in available_packages:
+            print(package.id)
+
         RoutePlanner._load_packages(
             truck, RoutePlanner._select_packages(available_packages, truck.capacity)
         )
@@ -248,7 +259,11 @@ class RoutePlanner:
         remaining_packages = [
             p
             for p in all_packages
-            if p not in truck.packages and Route._can_deliver_on_truck(p, truck)
+            if p not in truck.packages
+            and Route._can_deliver_on_truck(p, truck)
+            and not p.is_delayed(current_time)
+            and not p.is_in_group()
+            and not p.is_delivered()
         ]
         RoutePlanner._load_packages(
             truck,

@@ -59,6 +59,8 @@ class DeliverySimulation:
     # TODO: Implement route planning logic
     def _plan_route(self):
         RoutePlanner.plan_routes(self.package_table, self.trucks, self.current_time)
+
+        # debug:
         for truck in self.trucks:
             print(f"Truck {truck.id} package list:")
             for package in truck.packages:
