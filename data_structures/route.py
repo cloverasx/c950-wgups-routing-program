@@ -31,10 +31,15 @@ class Route:
             raise ValueError("Algorithm not set")
 
     @staticmethod
-    def get_priority_packages(packages):
+    def get_priority_packages(packages, current_time):
         priority_packages = []
         for package in packages:
-            if package.deadline and package.deadline != datetime.time(23, 59, 59):
+            if (
+                not package.is_delayed(current_time)
+                and package.has_deadline()
+                and not package.is_on_truck()
+                and not package.is_delivered()
+            ):
                 priority_packages.append(package)
         return priority_packages
 
@@ -45,19 +50,26 @@ class Route:
         print(current_time)
 
         for package in packages:
-            if "delayed" in package.note.lower():
-                delayed_time = Route._parse_delay_time(package.note)
-                if current_time < delayed_time:
-                    delayed_packages.append(package)
+            if (
+                package.is_delayed(current_time)
+                and not package.is_on_truck()
+                and not package.is_delivered()
+            ):
+                delayed_packages.append(package)
         return delayed_packages
 
     @staticmethod
-    def get_group_packages(packages):
+    def get_group_packages(packages, current_time):
         grouped_packages = []
         # package_to_group = {}
 
         for package in packages:
-            if "delivered with" in package.note.lower():
+            if (
+                package.is_in_group()
+                and not package.is_on_truck()
+                and not package.is_delayed(current_time)
+                and not package.is_delivered()
+            ):
                 group = [package]
                 related_ids = [int(s) for s in package.note.split() if s.isdigit()]
                 for pid in related_ids:
@@ -115,29 +127,6 @@ class Route:
                 return int("".join(filter(str.isdigit, words[i + 1])))
 
     @staticmethod
-    def parse_datetime_from_string(string):
-        # example datetime string:
-        # '1900-01-01 09:00:00'
-        return datetime.datetime.strptime(string, "%Y-%m-%d %H:%M:%S").time()
-
-    @staticmethod
-    def _parse_delay_time(note):
-        time_str = note.split("until ")[-1].strip()
-        # Remove the 'am' or 'pm' and split into hours and minutes
-        time_parts = time_str[:-2].split(":")
-        hours = int(time_parts[0])
-        minutes = int(time_parts[1])
-
-        # Adjust hours for PM times
-        if time_str.lower().endswith("pm") and hours != 12:
-            hours += 12
-        elif time_str.lower().endswith("am") and hours == 12:
-            hours = 0
-
-        # Create a time object
-        return datetime.time(hours, minutes)
-
-    @staticmethod
     def _get_temp_route(truck):
         if not truck.packages:
             return []
@@ -149,7 +138,7 @@ class Route:
         return t
 
     @staticmethod
-    def _no_deadline_failures(truck):
+    def has_no_deadline_failures(truck):
         if not truck.packages:
             return True
         current_time = truck.next_delivery_time
@@ -167,6 +156,16 @@ class Route:
             location = package.address
         return True
 
+    @staticmethod
+    def _is_package_on_truck(package):
+        return package.status.startswith("on truck")
+
+    @staticmethod
+    def _update_delayed_packages(packages, current_time):
+        for package in packages:
+            if package.is_delayed(current_time):
+                package.status = "delayed"
+
 
 class RoutePlanner:
     @staticmethod
@@ -174,10 +173,12 @@ class RoutePlanner:
         # debug:
         print(Route.distance_graph)
 
+        # update delayed packages
+        Route._update_delayed_packages(packages, current_time)
         # group packages by priority, delayed, and truck-specific
-        priority_packages = Route.get_priority_packages(packages)
+        priority_packages = Route.get_priority_packages(packages, current_time)
+        group_packages = Route.get_group_packages(packages, current_time)
         delayed_packages = Route.get_delayed_packages(current_time, packages)
-        group_packages = Route.get_group_packages(packages)
 
         # assign packages to trucks
         for truck in trucks:
@@ -192,7 +193,9 @@ class RoutePlanner:
 
         # optimize routes
         for truck in trucks:
-            optimized_route = Route.route(truck.packages, truck.current_location)
+            t = copy.deepcopy(truck)
+            truck.packages = []
+            optimized_route = Route.route(t.packages, t.current_location)
             for package in optimized_route:
                 truck.load_package(package)
 
@@ -218,19 +221,23 @@ class RoutePlanner:
             truck, RoutePlanner._select_packages(available_packages, truck.capacity)
         )
 
-        # add delayed packages if time met
-        available_delayed = [
-            p for p in delayed_packages if Route._can_deliver_on_truck(p, truck)
-        ]
-        RoutePlanner._load_packages(
-            truck,
-            RoutePlanner._select_packages(
-                available_delayed, truck.capacity - len(truck.packages)
-            ),
-        )
-
-        # add grouped packages
+        ## add grouped packages
         for group in group_packages:
+            # check to see if any of the group members are already on the truck
+            if any(p in truck.packages for p in group):
+                # if all the group packages are on the truck, skip
+                if all(p in group for p in truck.packages):
+                    continue
+                else:
+                    if (
+                        truck.capacity - len(truck.packages) >= len(group)
+                        and all(Route._can_deliver_on_truck(p, truck) for p in group)
+                        and all(p not in delayed_packages for p in group)
+                    ):
+                        # Load the entire group on the truck
+                        group_remainder = [p for p in group if p not in truck.packages]
+                        RoutePlanner._load_packages(truck, group_remainder)
+
             available_group = [p for p in group if p not in truck.packages]
             if all(
                 Route._can_deliver_on_truck(p, truck) for p in available_group
@@ -257,6 +264,7 @@ class RoutePlanner:
     @staticmethod
     def _load_packages(truck, packages):
         for package in packages:
+            package.status = f"on truck {truck.id}"
             truck.load_package(package)
 
     @staticmethod
@@ -291,7 +299,7 @@ class RoutePlanner:
                         other_package.deadline > package.deadline
                         and Route._can_deliver_on_truck(other_package, current_truck)
                         and Route._can_deliver_on_truck(package, other_truck)
-                        and Route._no_deadline_failures(
+                        and Route.has_no_deadline_failures(
                             Route._get_temp_route(other_truck)
                         )
                     ):
