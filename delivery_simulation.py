@@ -9,8 +9,23 @@ import time
 import datetime
 
 
+class SimulationClock:
+    def __init__(self):
+        self.time_scale = config.TIME_SCALE
+        self.current_time = config.START_TIME
+
+    def advance(self, delta):
+        self.current_time += delta * self.time_scale
+
+    def get_time(self):
+        return self.current_time
+
+
 class DeliverySimulation:
-    def __init__(self, package_file, distance_file):
+    def __init__(self):
+        self.clock = SimulationClock()
+        self.events = []
+
         self.current_time = datetime.time(8, 0)  # Start at 8:00 AM
         self.package_table = HashTable()
         self.distance_graph = None
@@ -20,13 +35,22 @@ class DeliverySimulation:
         self.algorithm = config.ALGORITHM
 
         # Load package and distance data from spreadsheets
-        self._load_package_data(package_file)
-        self._load_distance_data(distance_file)
+        self._load_package_data(config.PACKAGE_FILE_CSV)
+        self._load_distance_data(config.DISTANCE_FILE_CSV)
         self._initialize_trucks()
         self._initialize_truck_drivers()
         Route.set_algorithm(self.algorithm)
         Route.set_graph(self.distance_graph)
         Truck.set_graph(self.distance_graph)
+
+    def run_step(self):
+        # process next event, update state
+        self.clock.advance(1)
+        # placeholder: update some state
+        return f"Time: {self.clock.get_time():.2f}, Packages Delivered: {int(self.clock.get_time())}"
+
+    def get_status(self):
+        return f"Time: {self.clock.get_time():.2f}"
 
     def _get_current_time(self):
         return self.current_time
@@ -56,7 +80,6 @@ class DeliverySimulation:
         for i in range(1, config.DRIVER_COUNT + 1):
             self.truck_drivers.append(TruckDriver(id=i))
 
-    # TODO: Implement route planning logic
     def _plan_route(self):
         RoutePlanner.plan_routes(self.package_table, self.trucks, self.current_time)
 
@@ -79,26 +102,8 @@ class DeliverySimulation:
         self._add_package_with_wrong_address()
         while self.packages_at_hub or any(truck.packages for truck in self.trucks):
             self._plan_route()
-            self._load_trucks()
             self._deliver_packages()
             self._update_time()
-
-    def _load_trucks(self):
-        #### I'M HERE ####
-        # THIS NEEDS TO ROUTE BASED ON TWO DRIVERS BEING AVAILABLE AT THE SAME TIME FIRST
-        # ACTUALLY DO THE PLAN ROUTE FIRST**
-        ##################
-
-        for truck in self.trucks:
-            if not truck.is_full() and not truck.is_en_route:
-                available_packages = self._get_available_packages()
-                selected_packages = self._select_packages_for_truck(
-                    truck, available_packages
-                )
-                for package_id in selected_packages:
-                    package = self.package_table.lookup(package_id)
-                    truck.load_package(package)
-                    self.packages_at_hub.remove(package_id)
 
     def _get_available_packages(self):
         return [
@@ -119,20 +124,10 @@ class DeliverySimulation:
         return []  # Placeholder
 
     def _deliver_packages(self):
-        for truck in self.trucks:
-            if truck.packages:
-                truck.deliver_packages(self.distance_graph, self.current_time)
-                self.delivered_packages.update(truck.delivered_packages)
-                truck.delivered_packages.clear()
+        pass
 
     def _update_time(self):
-        # Increment time based on the fastest truck's next delivery
-        # This is a simplified time update mechanism
-        self.current_time = min(
-            truck.next_delivery_time
-            for truck in self.trucks
-            if truck.next_delivery_time
-        )
+        pass
 
     def get_package_status(self, package_id, time):
         package = self.package_table.lookup(package_id)

@@ -29,10 +29,12 @@ def main():
     )
     DataParsingUtils.convert_distance_file_to_csv(
         config.DISTANCE_FILE, config.DISTANCE_FILE_CSV
-    )
+    )  # Initialize and run the simulation
 
-    # Initialize and run the simulation
-    simulation = DeliverySimulation(config.PACKAGE_FILE_CSV, config.DISTANCE_FILE_CSV)
+    # simulation = DeliverySimulation(config.PACKAGE_FILE_CSV, config.DISTANCE_FILE_CSV)
+    simulation = DeliverySimulation()
+    cli = CommandLineInterface(simulation)
+    cli.run()
     simulation.run_simulation()
 
     # Display results

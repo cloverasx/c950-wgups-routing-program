@@ -29,10 +29,13 @@ class Truck:
 
     def load_package(self, package):
         self.packages.append(package)
-        if self.packages:
-            self.next_delivery_time = self._calculate_delivery_time(
-                self.packages[0].address
-            )
+        # if self.packages:
+        #     self.next_delivery_time = self._calculate_delivery_time(
+        #         self.packages[0].address
+        #     )
+
+    def remove_package(self, package):
+        self.packages.remove(package)
 
     def deliver_packages(self):
         for package in self.packages:

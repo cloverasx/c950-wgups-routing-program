@@ -138,12 +138,18 @@ class Route:
         return t
 
     @staticmethod
-    def has_no_deadline_failures(truck):
+    def has_deadline_failures(truck, packages=None):
+        if packages:
+            return Route._check_for_failures(truck, packages)
         if not truck.packages:
-            return True
-        current_time = truck.next_delivery_time
+            return False
+        return Route._check_for_failures(truck, truck.packages)
+
+    @staticmethod
+    def _check_for_failures(truck, packages):
+        current_time = truck.current_time
         location = truck.current_location
-        for package in truck.packages:
+        for package in packages:
             distance = Route.distance_graph.get_distance(location, package.address)
             travel_time = distance / truck.speed
             delivery_time = (
@@ -151,10 +157,10 @@ class Route:
                 + datetime.timedelta(hours=travel_time)
             ).time()
             if delivery_time > package.deadline:
-                return False
+                return True
             current_time = delivery_time
             location = package.address
-        return True
+        return False
 
     @staticmethod
     def _is_package_on_truck(package):
@@ -166,6 +172,73 @@ class Route:
             if package.is_delayed(current_time):
                 package.status = "delayed"
 
+    @staticmethod
+    def get_available_packages(packages, current_time, truck=None):
+        if truck:
+            return [
+                p
+                for p in packages
+                if not p.is_delayed(current_time)
+                and not p.is_on_truck()
+                and not p.is_delivered()
+                and Route._can_deliver_on_truck(p, truck)
+            ]
+        return [
+            p
+            for p in packages
+            if not p.is_delayed(current_time)
+            and not p.is_on_truck()
+            and not p.is_delivered()
+        ]
+
+    @staticmethod
+    def sort_by_deadline(packages):
+        return sorted(packages, key=lambda p: p.deadline)
+
+    @staticmethod
+    def show_route(truck):
+        route = []
+        current_time = truck.current_time
+        location = truck.current_location
+        for package in truck.packages:
+            distance = Route.distance_graph.get_distance(location, package.address)
+            travel_time = distance / truck.speed
+            delivery_time = (
+                datetime.datetime.combine(datetime.date.today(), current_time)
+                + datetime.timedelta(hours=travel_time)
+            ).time()
+            late = delivery_time > package.deadline
+            route.append(
+                f"Package {package.id} to {package.address} by {delivery_time}. {'LATE' if late else ''}"
+            )
+            current_time = delivery_time
+            location = package.address
+        return route
+
+    @staticmethod
+    def is_grouped_in_list(group_packages, package_list):
+        for group in group_packages:
+            group_in_trimmed = [pkg for pkg in group if pkg in package_list]
+            return group_in_trimmed
+        return False
+
+    @staticmethod
+    def add_group_remainder(group_packages, package_list):
+        for group in group_packages:
+            if set(group).issubset(set(package_list)):
+                continue
+            else:
+                remaining_group = [pkg for pkg in group if pkg not in package_list]
+                for i in range(len(package_list) - 1, -1, -1):
+                    if len(remaining_group) == 0:
+                        break
+
+                    if package_list[i] not in group:
+                        package_list[i] = remaining_group.pop(0)
+                package_list.extend(remaining_group)
+            # remove all packages from group
+            group.clear()
+
 
 class RoutePlanner:
     @staticmethod
@@ -173,20 +246,13 @@ class RoutePlanner:
         # debug:
         print(Route.distance_graph)
 
+        # update delayed packages
+        Route._update_delayed_packages(packages, current_time)
+
         # assign packages to trucks
         for truck in trucks:
-            # update delayed packages
-            Route._update_delayed_packages(packages, current_time)
-            # group packages by priority, delayed, and truck-specific
-            priority_packages = Route.get_priority_packages(packages, current_time)
-            group_packages = Route.get_group_packages(packages, current_time)
-            delayed_packages = Route.get_delayed_packages(current_time, packages)
-
             RoutePlanner._assign_packages_to_truck(
                 truck,
-                priority_packages,
-                delayed_packages,
-                group_packages,
                 packages,
                 current_time,
             )
@@ -196,91 +262,63 @@ class RoutePlanner:
             # id_list = [p.id for p in truck.packages]
             print(f"Truck {truck.id} package list: {[p.id for p in truck.packages]}")
 
-        # optimize routes
-        for truck in trucks:
-            t = copy.deepcopy(truck)
-            truck.packages = []
-            optimized_route = Route.route(t.packages, t.current_location)
-            for package in optimized_route:
-                truck.load_package(package)
-
-        # check and adjust for missed deadlines
-        RoutePlanner._adjust_for_deadlines(trucks)
+        for t in trucks:
+            print(f"\nTruck {t.id} route:")
+            for _ in Route.show_route(t):
+                print(_)
 
     @staticmethod
     def _assign_packages_to_truck(
         truck,
-        priority_packages,
-        delayed_packages,
-        group_packages,
         all_packages,
         current_time,
     ):
-        # start with priority packages
-        available_packages = [
-            p
-            for p in priority_packages
-            if p not in delayed_packages and Route._can_deliver_on_truck(p, truck)
-        ]
+        available_packages = Route.get_available_packages(
+            all_packages, current_time, truck
+        )
+        group_packages = Route.get_group_packages(all_packages, current_time)
 
         # debug:
-        print("available packages:")
-        for package in available_packages:
-            print(package.id)
+        print(f"available packages: {[p.id for p in available_packages]}")
 
-        RoutePlanner._load_packages(
-            truck, RoutePlanner._select_packages(available_packages, truck.capacity)
-        )
+        # sort by deadline
+        priority_packages = Route.sort_by_deadline(available_packages)
 
-        ## add grouped packages
-        for group in group_packages:
-            # check to see if any of the group members are already on the truck
-            if any(p in truck.packages for p in group):
-                # if all the group packages are on the truck, skip
-                if all(p in group for p in truck.packages):
-                    continue
-                else:
-                    if (
-                        truck.capacity - len(truck.packages) >= len(group)
-                        and all(Route._can_deliver_on_truck(p, truck) for p in group)
-                        and all(p not in delayed_packages for p in group)
-                    ):
-                        # Load the entire group on the truck
-                        group_remainder = [p for p in group if p not in truck.packages]
-                        RoutePlanner._load_packages(truck, group_remainder)
+        selected_packages = []
+        for package in priority_packages:
+            if len(selected_packages) >= truck.capacity:
+                break
+            for group in group_packages:
+                if (
+                    package in group
+                    and len(selected_packages) + len(group_packages) > truck.capacity
+                ):
+                    test_packages = selected_packages + group
+                    if not Route.has_deadline_failures(truck, test_packages):
+                        selected_packages.extend(group)
+                        group.clear()
+                        continue
+            else:
+                test_packages = selected_packages + [package]
+                if not Route.has_deadline_failures(truck, test_packages):
+                    selected_packages.append(package)
 
-            available_group = [p for p in group if p not in truck.packages]
-            if all(
-                Route._can_deliver_on_truck(p, truck) for p in available_group
-            ) and len(group) <= (truck.capacity - len(truck.packages)):
-                RoutePlanner._load_packages(truck, available_group)
+        print(truck.current_time)
+        print(truck.next_delivery_time)
 
-        # fill remaining capacity
-        remaining_packages = [
-            p
-            for p in all_packages
-            if p not in truck.packages
-            and Route._can_deliver_on_truck(p, truck)
-            and not p.is_delayed(current_time)
-            and not p.is_in_group()
-            and not p.is_delivered()
-        ]
-        RoutePlanner._load_packages(
-            truck,
-            RoutePlanner._select_packages(
-                remaining_packages, truck.capacity - len(truck.packages)
-            ),
-        )
-
-    @staticmethod
-    def _select_packages(packages, capacity):
-        return sorted(packages, key=lambda p: p.deadline)[:capacity]
+        RoutePlanner._load_packages(truck, selected_packages)
 
     @staticmethod
     def _load_packages(truck, packages):
         for package in packages:
             package.status = f"on truck {truck.id}"
             truck.load_package(package)
+
+    @staticmethod
+    def remove_packages(truck, packages):
+        for package in packages:
+            package.status = "at hub"
+            truck.remove_package(package)
 
     @staticmethod
     def _adjust_for_deadlines(trucks):
@@ -314,7 +352,7 @@ class RoutePlanner:
                         other_package.deadline > package.deadline
                         and Route._can_deliver_on_truck(other_package, current_truck)
                         and Route._can_deliver_on_truck(package, other_truck)
-                        and Route.has_no_deadline_failures(
+                        and Route.has_deadline_failures(
                             Route._get_temp_route(other_truck)
                         )
                     ):

@@ -14,6 +14,9 @@ EOD = "1900-01-01 23:59:59"  # Default: "1900-01-01 23:59:59"
 HUB_LOCATION = "4001 s 700 e"  # Default: "4001 s 700 e"
 ALGORITHM = "nearest_neighbor"  # Default: "nearest_neighbor"
 
+# CLI Config Options:
+TIME_SCALE = 1 / 60  # Default: 1/60
+
 # File Config Options:
 PACKAGE_FILE = "data/WGUPS Package File.xlsx"  # Default: "data/WGUPS Package File.xlsx"
 DISTANCE_FILE = (
